@@ -1,34 +1,62 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { createTrack } from "../services/trackService";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { createTrack, updateTrack, getTrackById } from "../services/trackService";
 
 const TrackForm = () => {
-  const [title, setTitle] = useState("");
-  const [artist, setArtist] = useState("");
+  const [track, setTrack] = useState({ title: "", artist: "" });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { trackId } = useParams(); 
+
+  useEffect(() => {
+    if (trackId) {
+      const fetchTrack = async () => {
+        try {
+          const trackData = await getTrackById(trackId);
+          setTrack({ title: trackData.title, artist: trackData.artist });
+        } catch (err) {
+          setError("Failed to fetch track data.");
+        }
+      };
+
+      fetchTrack();
+    }
+  }, [trackId]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setTrack((prevTrack) => ({
+      ...prevTrack,
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createTrack({ title, artist });
-      navigate("/"); // Redirect to the home page
+      if (trackId) {
+        await updateTrack(trackId, track);
+      } else {
+        await createTrack(track);
+      }
+      navigate("/"); 
     } catch (err) {
-      setError("Failed to add the track. Please try again.");
+      setError("Failed to submit track.");
     }
   };
 
   return (
     <div className="track-form">
-      <h2>Add New Track</h2>
+      <h2>{trackId ? "Edit Track" : "Add New Track"}</h2>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSubmit}>
         <label>
           Title:
           <input
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            name="title"
+            value={track.title}
+            onChange={handleChange}
             required
           />
         </label>
@@ -36,12 +64,13 @@ const TrackForm = () => {
           Artist:
           <input
             type="text"
-            value={artist}
-            onChange={(e) => setArtist(e.target.value)}
+            name="artist"
+            value={track.artist}
+            onChange={handleChange}
             required
           />
         </label>
-        <button type="submit">Add Track</button>
+        <button type="submit">{trackId ? "Update Track" : "Add Track"}</button>
       </form>
     </div>
   );
